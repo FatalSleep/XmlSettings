@@ -1,6 +1,9 @@
 # XmlSettings
 Simple Xml based File Settings reader/writer. You can read and write properties into a section in the XmlSettings. Create a section or two or whatever, target the section for reading/writing, then write the properties you want to save into the sections you want them in. Then serialize to save or deserialize to load.
 
+```
+using System.Xml;
+```
 ```C#
 // Create a new XmlSettings instance.
 XmlSettings xset = new XmlSettings(appDirectory, folderName);

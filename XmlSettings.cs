@@ -159,7 +159,7 @@ namespace System.Xml {
                 settings.Add(section, new Dictionary<string, string>());
                 
                 if (target)
-                    Targetsection(section);
+                    TargetSection(section);
             }
 
             return sectionExists;

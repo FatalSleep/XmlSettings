@@ -149,14 +149,18 @@ namespace System.Xml {
         #endregion
 
         #region Section Interface
-        /// <summary>Creates a new section.</summary>
+        /// <summary>Creates a new section and targets it.</summary>
         /// <param name="section"></param>
         /// <returns>true if the section was created, else false if the section already exists.</returns>
-        public bool CreateSection(string section) {
+        public bool CreateSection(string section, bool target = false) {
             bool sectionExists = settings.ContainsKey(section);
 
-            if(!sectionExists)
+            if(!sectionExists) {
                 settings.Add(section, new Dictionary<string, string>());
+                
+                if (target)
+                    Targetsection(section);
+            }
 
             return sectionExists;
         }

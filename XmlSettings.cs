@@ -88,7 +88,7 @@ namespace System.Xml {
         /// <param name="property">Name of the property to write.</param>
         /// <param name="data">Value to write to the property.</param>
         /// <returns>true if the section exists, else false.</returns>
-        public bool Write<T>(string property, T data) where T : struct, IComparable, IConvertible, IEquatable<T>, IComparable<T> {
+        public bool Write<T>(string property, T data) where T : IComparable, IConvertible, IEquatable<T>, IComparable<T> {
             bool? key = targetedSection?.ContainsKey(property);
 
             if(key != false && key != null) {
@@ -116,7 +116,7 @@ namespace System.Xml {
         /// <param name="property">Name of the property to read.</param>
         /// <param name="result">Result of the read operation.</param>
         /// <returns>true if the property was found, else false.</returns>
-        public bool Read<T>(string property, out T result) where T : struct, IComparable, IConvertible, IEquatable<T>, IComparable<T> {
+        public bool Read<T>(string property, out T result) where T : IComparable, IConvertible, IEquatable<T>, IComparable<T> {
             result = default(T);
             string value = string.Empty;
 

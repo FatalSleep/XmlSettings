@@ -1,44 +1,126 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Windows;
 using System.Xml;
 
-namespace System.Xml {
-    /// <summary>Creates application settings for the executing module.</summary>
-    public class XmlSettings {
+namespace MPT_Modules.Utilities {
+    public class XmlManager {
         #region Private Fields
-        private Dictionary<string, Dictionary<string, string>> settings;
-        private Dictionary<string, string> targetedSection;
+        /// <summary>XML formatted Dictionary.</summary>
+        private readonly Dictionary<string, Dictionary<string, string>> settings;
         #endregion
-
         #region Public Properties
         /// <summary>Base directory the settings are written/read.</summary>
-        public string BaseDirectory { get; set; }
-        
-        /// <summary>Name of the folder the settings are written/read.</summary>
-        public string FolderName { get; set; }
+        public string FileDirectory { get; set; }
+        /// <summary>Name the file will be given when written/read.</summary>
+        public string FileName { get; set; }
 
-        /// <summary>Gets the name of the targeted section.</summary>
-        public string TargetedSectionName { get; private set; }
+        /// <summary>Name of the root XML header.</summary>
+        public string RootHeaderName { get; set; }
         #endregion
 
-        #region Constructor
-        /// <summary>Creates a new AppSettings object.</summary>
-        public XmlSettings(string baseDirectory, string folderName) {
-            BaseDirectory = baseDirectory;
-            FolderName = folderName;
+        /// <summary>Create a new XmlManager to serialize an XML settings file.</summary>
+        /// <param name="directory">Path to save the XML file to.</param>
+        /// <param name="fileName">Name of the XML file.</param>
+        /// <param name="isAppRelative">Whether the directory is relative to the application directory.</param>
+        public XmlManager(string directory, string fileName, string rootHeaderName, bool isAppRelative = false) {
+            FileDirectory = (isAppRelative) ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, new DirectoryInfo(directory).Name) : directory;
+            FileName = new DirectoryInfo(fileName).Name;
+            RootHeaderName = rootHeaderName;
             settings = new Dictionary<string, Dictionary<string, string>>();
         }
-        #endregion
 
-        #region Serialization Interface
-        /// <summary>Writes the current settings data to the settings file, then clears it from memory.</summary>
+        /// <summary>Checks if a particular property in a section exists.</summary>
+        /// <param name="section">Name of the section to check for.</param>
+        /// <param name="propertyName">Name of the proeprty to check for.</param>
+        /// <returns>True if the property in section exists, else false.</returns>
+        public bool Exists(string section, string propertyName) {
+            Dictionary<string, string> outSection = null;
+            settings.TryGetValue(section, out outSection);
+            return outSection?.ContainsKey(propertyName) == true;
+        }
+
+        /// <summary>Write a value to a property in a section.</summary>
+        /// <typeparam name="T">Valid types: Bool, Int32, Single, Double or String.</typeparam>
+        /// <param name="section">Section name to write the new property to.</param>
+        /// <param name="propertyName">Name of the property to create.</param>
+        /// <param name="value">Value to give the property.</param>
+        /// <exception cref="NotImplementedException">Throw on invalid type.</exception>
+        public void Write<T>(string section, string propertyName, T value) where T : IComparable, IConvertible, IEquatable<T>, IComparable<T> {
+            if (!settings.ContainsKey(section))
+                settings.Add(section, new Dictionary<string, string>());
+
+            Dictionary<string, string> outSection;
+            settings.TryGetValue(section, out outSection);
+
+            if (Exists(section, propertyName))
+                outSection.Remove(propertyName);
+
+            switch (Type.GetTypeCode(typeof(T))) {
+                case TypeCode.Boolean:
+                case TypeCode.Int32:
+                case TypeCode.Single:
+                case TypeCode.Double:
+                case TypeCode.String:
+                    outSection.Add(propertyName, value.ToString());
+                    break;
+                default:
+                    throw new NotImplementedException("Type constraint not implemented exception.");
+            }
+        }
+
+        /// <summary></summary>
+        /// <typeparam name="T">Valid types: Bool, Int32, Single, Double or String.</typeparam>
+        /// <param name="section">Section name to read the property from.</param>
+        /// <param name="propertyName">Name of the property to read.</param>
+        /// <param name="value">Out reference to write the value to.</param>
+        /// <exception cref="NotImplementedException">Throw on invalid type.</exception>
+        /// <returns>True if property can be read, else false.</returns>
+        public bool Read<T>(string section, string propertyName, out T value) where T : IComparable, IConvertible, IEquatable<T>, IComparable<T> {
+            bool hasProperty = false;
+            value = default(T);
+
+            if (Exists(section, propertyName)) {
+                Dictionary<string, string> outSection;
+                settings.TryGetValue(section, out outSection);
+                string property = string.Empty;
+                outSection?.TryGetValue(propertyName, out property);
+
+                switch (Type.GetTypeCode(typeof(T))) {
+                    case TypeCode.Boolean:
+                        value = (T)(object)Convert.ToBoolean(property);
+                        break;
+                    case TypeCode.Int32:
+                        value = (T)(object)Convert.ToInt32(property);
+                        break;
+                    case TypeCode.Single:
+                        value = (T)(object)Convert.ToSingle(property);
+                        break;
+                    case TypeCode.Double:
+                        value = (T)(object)Convert.ToDouble(property);
+                        break;
+                    case TypeCode.String:
+                        value = (T)(object)property;
+                        break;
+                    default:
+                        throw new NotImplementedException("Type constraint not implemented exception.");
+                }
+
+                hasProperty = true;
+            }
+
+            return hasProperty;
+        }
+
+        /// <summary>Writes the XML data to the file at the provided directory.</summary>
         public void Serialize() {
             XmlDocument document = new XmlDocument();
-            document.AppendChild(document.CreateElement("settings", ""));
-            
-            foreach(var section in settings) {
-                XmlElement node = document.CreateElement(section.Key, document.DocumentElement.NamespaceURI);
+            XmlNode sectionNode = document.CreateElement(RootHeaderName, "");
+            document.AppendChild(sectionNode);
+
+            foreach (var section in settings) {
+                XmlNode node = document.CreateElement(section.Key, document.DocumentElement.NamespaceURI);
 
                 foreach(var pair in section.Value) {
                     XmlElement property = document.CreateElement(pair.Key, document.DocumentElement.NamespaceURI);
@@ -46,144 +128,35 @@ namespace System.Xml {
                     node.AppendChild(property);
                 }
 
-                document.DocumentElement.AppendChild(node);
+                sectionNode.AppendChild(node);
             }
 
-            Directory.CreateDirectory(BaseDirectory);
-            document.Save(Path.Combine(BaseDirectory, FolderName + ".xml"));
-
-            settings.Clear();
+            Directory.CreateDirectory(FileDirectory);
+            document.Save(Path.Combine(FileDirectory, FileName + ".xml"));
         }
 
-        /// <summary>Clears the current settings data and loads settings from the settings file.</summary>
+        /// <summary>Reads the XML data from the file at the provided directory.</summary>
         public void Deserialize() {
-            string filePath = Path.Combine(BaseDirectory, FolderName + ".xml");
+            string filePath = Path.Combine(FileDirectory, FileName + ".xml");
 
-            if(!File.Exists(filePath))
-                return;
-
-            settings.Clear();
+            if (File.Exists(filePath)) {
+                settings.Clear();
+            } else return;
 
             XmlDocument document = new XmlDocument();
             document.Load(filePath);
-            XmlNode settingsNode = document.DocumentElement;
+            XmlNode sectionNode = document.DocumentElement;
 
-            if(settingsNode.Name != "settings")
-                throw new XmlException("XML does not contain settings XML root element.");
+            if (sectionNode.Name != RootHeaderName)
+                throw new XmlException("XML does not contain '" + RootHeaderName + "' XML root element.");
 
-            foreach(XmlNode section in settingsNode) {
+            foreach (XmlNode section in sectionNode) {
                 Dictionary<string, string> deserializedSection = new Dictionary<string, string>();
                 settings.Add(section.Name, deserializedSection);
 
-                foreach(XmlNode property in section) {
+                foreach (XmlNode property in section)
                     deserializedSection.Add(property.Name, property.InnerText);
-                }
             }
         }
-        #endregion
-
-        #region Write / Read Interface
-        /// <summary>Writes the property to the settings data.</summary>
-        /// <typeparam name="T">Type of the property: Bool, Int32, Single, Double or String.</typeparam>
-        /// <param name="property">Name of the property to write.</param>
-        /// <param name="data">Value to write to the property.</param>
-        /// <returns>true if the section exists, else false.</returns>
-        public bool Write<T>(string property, T data) where T : IComparable, IConvertible, IEquatable<T>, IComparable<T> {
-            bool? key = targetedSection?.ContainsKey(property);
-
-            if(key != false && key != null) {
-                if(targetedSection.ContainsKey(property))
-                    targetedSection.Remove(property);
-
-                switch(Type.GetTypeCode(typeof(T))) {
-                    case TypeCode.Boolean:
-                    case TypeCode.Int32:
-                    case TypeCode.Single:
-                    case TypeCode.Double:
-                    case TypeCode.String:
-                        targetedSection.Add(property, data.ToString());
-                        break;
-                    default:
-                        throw new NotImplementedException("Type constraint not implemented exception.");
-                }
-            }
-
-            return (key == null) ? false : (bool)key;
-        }
-
-        /// <summary>Reads the property from the settings data.</summary>
-        /// <typeparam name="T">Type of the property: Bool, Int32, Single, Double or String.</typeparam>
-        /// <param name="property">Name of the property to read.</param>
-        /// <param name="result">Result of the read operation.</param>
-        /// <returns>true if the property was found, else false.</returns>
-        public bool Read<T>(string property, out T result) where T : IComparable, IConvertible, IEquatable<T>, IComparable<T> {
-            result = default(T);
-            string value = string.Empty;
-
-            bool? key = targetedSection?.TryGetValue(property, out value);
-
-            if(key != false && key != null) {
-                switch(Type.GetTypeCode(typeof(T))) {
-                    case TypeCode.Boolean:
-                        result = (T)(object)Convert.ToBoolean(value);
-                    break;
-                    case TypeCode.Int32:
-                        result = (T)(object)Convert.ToInt32(value);
-                    break;
-                    case TypeCode.Single:
-                        result = (T)(object)Convert.ToSingle(value);
-                    break;
-                    case TypeCode.Double:
-                        result = (T)(object)Convert.ToDouble(value);
-                    break;
-                    case TypeCode.String:
-                        result = (T)(object)value;
-                    break;
-                    default:
-                        throw new NotImplementedException("Type constraint not implemented exception.");
-                }
-            }
-
-            return (key == null)? false : (bool)key;
-        }
-        #endregion
-
-        #region Section Interface
-        /// <summary>Creates a new section and targets it.</summary>
-        /// <param name="section"></param>
-        /// <returns>true if the section was created, else false if the section already exists.</returns>
-        public bool CreateSection(string section, bool target = false) {
-            bool sectionExists = settings.ContainsKey(section);
-
-            if(!sectionExists) {
-                settings.Add(section, new Dictionary<string, string>());
-                
-                if (target)
-                    TargetSection(section);
-            }
-
-            return sectionExists;
-        }
-
-        /// <summary>Removes an existing section.</summary>
-        /// <param name="section"></param>
-        /// <returns>true if the section was removed, else false.</returns>
-        public bool DestroySection(string section) {
-            bool sectionExists = settings.ContainsKey(section);
-
-            if(sectionExists)
-                settings.Remove(section);
-
-            return sectionExists;
-        }
-
-        /// <summary>Attempts to target an existing section.</summary>
-        /// <param name="section">Nameo f the section to target.</param>
-        /// <returns>true if the section was targeted, else false.</returns>
-        public virtual bool TargetSection(string section) {
-            TargetedSectionName = section;
-            return settings.TryGetValue(section, out targetedSection);
-        }
-        #endregion
     }
 }

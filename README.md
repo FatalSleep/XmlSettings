@@ -7,23 +7,20 @@ using System.Xml;
 ```
 ```C#
 // Create a new XmlSettings instance.
-XmlSettings xset = new XmlSettings(appDirectory, folderName);
-
-// Create a section and target the seciton for reading/writing.
-xset.CreateSection("Application");
-xset.TargetSection("Application");
-
-// Destroy a section you don't need.
-xset.DestroySection("Trash Section");
+// directory = file path  to store the file (absolute or relative).
+// folderName = name of the subflder to store the file in.
+// rootHeaderName = root XML header element name.
+// isAppDirectoryRelative = whether the directory is relative to the application directory.
+XmlSettings xset = new XmlSettings(directory, folderName, rootHeaderName, isAppDirectoryRelative);
 
 /*
-  Supports Read/Write for:
+  Supports Read/Write T for:
     Bool, Int32, Single, Double, String.
 */
 // Write to the section.
-xset.Write<string>("FontSize", FontSizeProperty);
+xset.Write<string>(sectionName, propertyName, T property);
 // Read from the section.
-xset.Read("FontSize", out FontSizeProperty);
+xset.Read(sectionName, propertName, out property);
 
 // Serialize--save--the XmlSettings to an XML file.
 xset.Serialize();

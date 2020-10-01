@@ -18,9 +18,9 @@ XmlSettings xset = new XmlSettings(directory, folderName, rootHeaderName, isAppD
     Bool, Int32, Single, Double, String.
 */
 // Write to the section.
-xset.Write<string>(sectionName, propertyName, T property);
+xset.Write<T>(sectionName, propertyName, T property);
 // Read from the section.
-xset.Read(sectionName, propertName, out property);
+xset.Read<T>(sectionName, propertName, out property);
 
 // Serialize--save--the XmlSettings to an XML file.
 xset.Serialize();

@@ -40,6 +40,10 @@ namespace MPT_Modules.Utilities {
             settings.TryGetValue(section, out outSection);
             return outSection?.ContainsKey(propertyName) == true;
         }
+        
+        /// <summary>Gets an enumerable list of available section names.</summary>
+        /// <returns>List of string section names.</returns>
+        public List<string> GetSectionNames() { return new List<string>(settings.Keys); }
 
         /// <summary>Write a value to a property in a section.</summary>
         /// <typeparam name="T">Valid types: Bool, Int32, Single, Double or String.</typeparam>
